@@ -169,35 +169,27 @@ def main_page(scheduler):
         st.subheader("Foreslåede grupper")
         for i, group in enumerate(st.session_state.suggested_groups, 1):
             group_with_affiliations = []
-            group_affiliations = defaultdict(list)
             for name in group:
                 participant = next((p for p in scheduler.participants if p['name'] == name), None)
                 if participant:
-                    affiliations = participant.get('groups', ['Ikke tildelt'])
-                    affiliation_str = ', '.join(affiliations)
-                    for affiliation in affiliations:
-                        group_affiliations[affiliation].append(name)
-                    group_with_affiliations.append(f"{name} ({affiliation_str})")
+                    affiliations = ', '.join(participant.get('groups', ['Ikke tildelt']))
+                    group_with_affiliations.append(f"{name} ({affiliations})")
                 else:
                     group_with_affiliations.append(f"{name} (Ukendt)")
+            st.write(f"Gruppe {i}: {', '.join(group_with_affiliations)}")
+
+        st.markdown('<h3 style="color:red;">STEP 5</h3>', unsafe_allow_html=True)
+        if st.button("Opret møde med disse grupper"):
+            # Opret møde og gem i scheduler og session_state
+            meeting_name = scheduler.create_meeting(st.session_state.suggested_groups, str(meeting_date))
+            st.success(f"Møde '{meeting_name}' oprettet for {meeting_date} med de foreslåede grupper.")
             
-            group_str = f"Gruppe {i}:"
-            for member in group_with_affiliations:
-                name = member.split(' (')[0]
-                if any(len(members) > 1 and name in members for members in group_affiliations.values()):
-                    group_str += f" {member}*,"
-                else:
-                    group_str += f" {member},"
-            group_str = group_str.rstrip(',')  # Fjern det sidste komma
+            # Gem møder i session_state for at sikre, at de bevares efter genindlæsning
+            st.session_state.scheduler.save_data()
             
-            if any(len(members) > 1 for members in group_affiliations.values()):
-                group_str += " *"
-            st.write(group_str)
-        
-        if st.session_state.unassigned_count > 0:
-            st.write(f"Antal deltagere, der ikke kunne fordeles optimalt: {st.session_state.unassigned_count}")
-        st.write("* indikerer grupper med deltagere fra samme tilhørsgruppe")
-        st.write("* efter et navn indikerer, at dette medlem deler tilhørsgruppe med en anden i gruppen")
+            # Behold bruttolisten og checkbox-tilstandene, men fjern kun 'suggested_groups'
+            del st.session_state.suggested_groups
+            st.rerun()
 
     # Vis det seneste møde og tidligere møder
     if scheduler.meetings:
@@ -206,27 +198,23 @@ def main_page(scheduler):
         with st.expander(f"{latest_meeting.get('name', 'Ukendt navn')} ({latest_meeting.get('date', 'Ingen dato angivet')})"):
             st.write("Grupper:")
             for i, group in enumerate(latest_meeting['groups'], 1):
-                group_str = f"Gruppe {i}:"
-                group_affiliations = defaultdict(list)
-                for name in group:
-                    participant = next((p for p in scheduler.participants if p['name'] == name), None)
-                    if participant:
-                        affiliations = participant.get('groups', ['Ikke tildelt'])
-                        affiliation_str = ', '.join(affiliations)
-                        for affiliation in affiliations:
-                            group_affiliations[affiliation].append(name)
-                        if any(len(members) > 1 and name in members for members in group_affiliations.values()):
-                            group_str += f" {name} ({affiliation_str})*,"
-                        else:
-                            group_str += f" {name} ({affiliation_str}),"
-                    else:
-                        group_str += f" {name} (Ukendt),"
-                group_str = group_str.rstrip(',')  # Fjern det sidste komma
-                if any(len(members) > 1 for members in group_affiliations.values()):
-                    group_str += " *"
-                st.write(group_str)
-            st.write("* indikerer grupper med deltagere fra samme tilhørsgruppe")
-            st.write("* efter et navn indikerer, at dette medlem deler tilhørsgruppe med en anden i gruppen")
+                st.write(f"Gruppe {i}: {', '.join(group)}")
+            
+            # Mulighed for at redigere eller slette det seneste møde
+            if st.button(f"Rediger grupper for det seneste møde", key=f"edit_latest_{latest_meeting['serial']}"):
+                st.session_state.editing_meeting = len(scheduler.meetings) - 1
+                st.session_state.manual_groups, st.session_state.unassigned = scheduler.manual_group_matching(
+                    [p for group in latest_meeting['groups'] for p in group],
+                    latest_meeting['groups']
+                )
+                st.rerun()
+            
+            if st.button(f"Slet det seneste møde", key=f"delete_latest_{latest_meeting['serial']}"):
+                if scheduler.delete_meeting(len(scheduler.meetings) - 1):
+                    st.success("Det seneste møde er blevet slettet.")
+                    st.rerun()
+                else:
+                    st.error("Der opstod en fejl ved sletning af mødet.")
 
         # Vis tidligere møder
         if len(scheduler.meetings) > 1:
