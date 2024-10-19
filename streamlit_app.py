@@ -80,38 +80,35 @@ def main_page(scheduler):
     if 'Ikke tildelt' in grouped_participants:
         sorted_groups.append('Ikke tildelt')
     
-    if not sorted_groups:
-        st.warning("Ingen deltagere er tilføjet endnu. Importer deltagere for at begynde.")
-    else:
-        for group in sorted_groups:
-            with st.expander(f"{group} ({len(grouped_participants[group])} medlemmer)", key=f"group_expander_main_{group}"):
-                all_selected = st.checkbox(f"Vælg alle i {group}", value=True, key=f"select_all_main_{group}")
+    for group in sorted_groups:
+        with st.expander(f"{group} ({len(grouped_participants[group])} medlemmer)", key=f"group_expander_main_{group}"):
+            all_selected = st.checkbox(f"Vælg alle i {group}", value=True, key=f"select_all_main_{group}")
+            
+            col1, col2 = st.columns(2)
+            group_has_multi_members = False
+            for i, name in enumerate(sorted(grouped_participants[group])):
+                col = col1 if i % 2 == 0 else col2
                 
-                col1, col2 = st.columns(2)
-                group_has_multi_members = False
-                for i, name in enumerate(sorted(grouped_participants[group])):
-                    col = col1 if i % 2 == 0 else col2
-                    
-                    display_name = f"{name} *" if name in duplicate_members else name
-                    if name in duplicate_members:
-                        group_has_multi_members = True
-                    
-                    if col.checkbox(display_name, key=f"checkbox_main_{group}_{name}", value=all_selected):
-                        if 'bruttoliste' not in st.session_state:
-                            st.session_state.bruttoliste = []
-                        if name not in st.session_state.bruttoliste:
-                            st.session_state.bruttoliste.append(name)
-                    elif name in st.session_state.get('bruttoliste', []):
-                        st.session_state.bruttoliste.remove(name)
+                display_name = f"{name} *" if name in duplicate_members else name
+                if name in duplicate_members:
+                    group_has_multi_members = True
                 
-                if group_has_multi_members:
-                    st.write("*Dette medlem findes i flere tilhørsgrupper")
+                if col.checkbox(display_name, key=f"checkbox_main_{group}_{name}", value=all_selected):
+                    if 'bruttoliste' not in st.session_state:
+                        st.session_state.bruttoliste = []
+                    if name not in st.session_state.bruttoliste:
+                        st.session_state.bruttoliste.append(name)
+                elif name in st.session_state.get('bruttoliste', []):
+                    st.session_state.bruttoliste.remove(name)
+            
+            if group_has_multi_members:
+                st.write("*Dette medlem findes i flere tilhørsgrupper")
 
-        st.session_state.bruttoliste = [
-            name for group in sorted_groups 
-            for name in grouped_participants[group] 
-            if st.session_state.get(f"checkbox_main_{group}_{name}", False)
-        ]
+    st.session_state.bruttoliste = [
+        name for group in sorted_groups 
+        for name in grouped_participants[group] 
+        if st.session_state.get(f"checkbox_main_{group}_{name}", False)
+    ]
 
     st.subheader("Bruttoliste")
     if st.button("Ryd bruttoliste", key="clear_bruttoliste_button_main"):
