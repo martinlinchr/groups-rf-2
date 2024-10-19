@@ -155,18 +155,21 @@ def main_page(scheduler):
     st.markdown('<h3 style="color:red;">STEP 5</h3>', unsafe_allow_html=True)
     st.subheader("Foreslå grupper")
     
-    # "Foreslå grupper" knap på sin egen linje
-    if st.button("Foreslå grupper", key="suggest_groups_button_main_page"):
-        if 'bruttoliste' in st.session_state and st.session_state.bruttoliste:
-            suggested_groups, unassigned_count = scheduler.shuffle_groups(group_size)
-            if suggested_groups:
-                st.session_state.suggested_groups = suggested_groups
-                st.session_state.unassigned_count = unassigned_count
-                st.success(f"Grupper er blevet foreslået. {unassigned_count} deltagere kunne ikke fordeles optimalt.")
+    col1, col2 = st.columns(2)
+    with col1:
+        group_size = st.selectbox("Vælg antal personer per gruppe", [3, 4, 5, 6], index=1, key="group_size")
+    with col2:
+        if st.button("Foreslå grupper"):
+            if 'bruttoliste' in st.session_state and st.session_state.bruttoliste:
+                suggested_groups, unassigned_count = scheduler.shuffle_groups(group_size)
+                if suggested_groups:
+                    st.session_state.suggested_groups = suggested_groups
+                    st.session_state.unassigned_count = unassigned_count
+                    st.success(f"Grupper er blevet foreslået. {unassigned_count} deltagere kunne ikke fordeles optimalt.")
+                else:
+                    st.error("Der opstod en fejl under forslag af grupper.")
             else:
-                st.error("Der opstod en fejl under forslag af grupper.")
-        else:
-            st.warning("Tilføj deltagere til bruttolisten før du foreslår grupper.")
+                st.warning("Tilføj deltagere til bruttolisten før du foreslår grupper.")
 
     # Knap til at foreslå grupper
     st.markdown('<h3 style="color:red;">STEP 5</h3>', unsafe_allow_html=True)
@@ -184,8 +187,8 @@ def main_page(scheduler):
     # Vis foreslåede grupper (hvis de findes)
     if 'suggested_groups' in st.session_state:
         st.subheader("Foreslåede grupper")
-        for i, group in enumerate(st.session_state.suggested_groups):
-            group_str = f"Gruppe {i+1}:"
+        for i, group in enumerate(st.session_state.suggested_groups, 1):
+            group_str = f"Gruppe {i}:"
             for name in group:
                 participant = next((p for p in scheduler.participants if p['name'] == name), None)
                 if participant:
@@ -193,13 +196,16 @@ def main_page(scheduler):
                     group_str += f" {name} ({affiliations}),"
                 else:
                     group_str += f" {name} (Ukendt),"
-            st.write(group_str.rstrip(','))
+            group_str = group_str.rstrip(',')  # Fjern det sidste komma
+            st.write(group_str)
         
         if st.session_state.get('unassigned_count', 0) > 0:
             st.write(f"Antal deltagere, der ikke kunne fordeles optimalt: {st.session_state.unassigned_count}")
 
+        # STEP 6: Opret møde med de foreslåede grupper
         st.markdown('<h3 style="color:red;">STEP 6</h3>', unsafe_allow_html=True)
-        if st.button("Opret møde med disse grupper", key="create_meeting_button_main_page"):
+        if st.button("Opret møde med disse grupper", key="create_meeting_button"):
+            meeting_date = st.session_state.get('meeting_date', datetime.now().date())
             meeting_name = scheduler.create_meeting(st.session_state.suggested_groups, str(meeting_date))
             st.success(f"Møde '{meeting_name}' oprettet for {meeting_date} med de foreslåede grupper.")
             scheduler.save_data()
