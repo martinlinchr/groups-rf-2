@@ -168,36 +168,19 @@ def main_page(scheduler):
     if 'suggested_groups' in st.session_state:
         st.subheader("Foreslåede grupper")
         for i, group in enumerate(st.session_state.suggested_groups, 1):
-            group_with_affiliations = []
-            group_affiliations = defaultdict(list)
+            group_str = f"Gruppe {i}:"
             for name in group:
                 participant = next((p for p in scheduler.participants if p['name'] == name), None)
                 if participant:
-                    affiliations = participant.get('groups', ['Ikke tildelt'])
-                    affiliation_str = ', '.join(affiliations)
-                    for affiliation in affiliations:
-                        group_affiliations[affiliation].append(name)
-                    group_with_affiliations.append(f"{name} ({affiliation_str})")
+                    affiliations = ', '.join(participant.get('groups', ['Ikke tildelt']))
+                    group_str += f" {name} ({affiliations}),"
                 else:
-                    group_with_affiliations.append(f"{name} (Ukendt)")
-            
-            group_str = f"Gruppe {i}:"
-            for member in group_with_affiliations:
-                name = member.split(' (')[0]
-                if any(len(members) > 1 and name in members for members in group_affiliations.values()):
-                    group_str += f" {member}*,"
-                else:
-                    group_str += f" {member},"
+                    group_str += f" {name} (Ukendt),"
             group_str = group_str.rstrip(',')  # Fjern det sidste komma
-            
-            if any(len(members) > 1 for members in group_affiliations.values()):
-                group_str += " *"
             st.write(group_str)
         
-        if st.session_state.unassigned_count > 0:
+        if st.session_state.get('unassigned_count', 0) > 0:
             st.write(f"Antal deltagere, der ikke kunne fordeles optimalt: {st.session_state.unassigned_count}")
-        st.write("* indikerer grupper med deltagere fra samme tilhørsgruppe")
-        st.write("* efter et navn indikerer, at dette medlem deler tilhørsgruppe med en anden i gruppen")
 
     # Vis det seneste møde og tidligere møder
     if scheduler.meetings:
@@ -207,26 +190,15 @@ def main_page(scheduler):
             st.write("Grupper:")
             for i, group in enumerate(latest_meeting['groups'], 1):
                 group_str = f"Gruppe {i}:"
-                group_affiliations = defaultdict(list)
                 for name in group:
                     participant = next((p for p in scheduler.participants if p['name'] == name), None)
                     if participant:
-                        affiliations = participant.get('groups', ['Ikke tildelt'])
-                        affiliation_str = ', '.join(affiliations)
-                        for affiliation in affiliations:
-                            group_affiliations[affiliation].append(name)
-                        if any(len(members) > 1 and name in members for members in group_affiliations.values()):
-                            group_str += f" {name} ({affiliation_str})*,"
-                        else:
-                            group_str += f" {name} ({affiliation_str}),"
+                        affiliations = ', '.join(participant.get('groups', ['Ikke tildelt']))
+                        group_str += f" {name} ({affiliations}),"
                     else:
                         group_str += f" {name} (Ukendt),"
                 group_str = group_str.rstrip(',')  # Fjern det sidste komma
-                if any(len(members) > 1 for members in group_affiliations.values()):
-                    group_str += " *"
                 st.write(group_str)
-            st.write("* indikerer grupper med deltagere fra samme tilhørsgruppe")
-            st.write("* efter et navn indikerer, at dette medlem deler tilhørsgruppe med en anden i gruppen")
 
         # Vis tidligere møder
         if len(scheduler.meetings) > 1:
