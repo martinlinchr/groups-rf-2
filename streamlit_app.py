@@ -76,20 +76,19 @@ def main_page(scheduler):
 
     duplicate_members = set([name for name in all_members if all_members.count(name) > 1])
     
-    sorted_groups = sorted([g for g in grouped_participants.keys() if g != 'Ikke tildelt'])
-    if 'Ikke tildelt' in grouped_participants:
-        sorted_groups.append('Ikke tildelt')
+    sorted_groups = sorted(grouped_participants.keys())
     
     if not sorted_groups:
         st.warning("Ingen deltagere er tilføjet endnu. Importer deltagere for at begynde.")
     else:
         for group in sorted_groups:
-            with st.expander(f"{group} ({len(grouped_participants[group])} medlemmer)", key=f"group_expander_main_{group}"):
+            members = grouped_participants.get(group, [])
+            with st.expander(f"{group} ({len(members)} medlemmer)", key=f"group_expander_main_{group}"):
                 all_selected = st.checkbox(f"Vælg alle i {group}", value=True, key=f"select_all_main_{group}")
                 
                 col1, col2 = st.columns(2)
                 group_has_multi_members = False
-                for i, name in enumerate(sorted(grouped_participants[group])):
+                for i, name in enumerate(sorted(members)):
                     col = col1 if i % 2 == 0 else col2
                     
                     display_name = f"{name} *" if name in duplicate_members else name
@@ -109,7 +108,7 @@ def main_page(scheduler):
 
         st.session_state.bruttoliste = [
             name for group in sorted_groups 
-            for name in grouped_participants[group] 
+            for name in grouped_participants.get(group, []) 
             if st.session_state.get(f"checkbox_main_{group}_{name}", False)
         ]
 
