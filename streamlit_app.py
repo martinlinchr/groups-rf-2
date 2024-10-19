@@ -164,6 +164,26 @@ def main_page(scheduler):
         else:
             st.warning("Tilføj deltagere til bruttolisten før du foreslår grupper.")
 
+    # STEP 5: Vælg gruppestørrelse og foreslå grupper
+    st.markdown('<h3 style="color:red;">STEP 5</h3>', unsafe_allow_html=True)
+    st.subheader("Foreslå grupper")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        group_size = st.selectbox("Vælg antal personer per gruppe", [3, 4, 5, 6], index=1, key="group_size")
+    with col2:
+        if st.button("Foreslå grupper"):
+            if 'bruttoliste' in st.session_state and st.session_state.bruttoliste:
+                suggested_groups, unassigned_count = scheduler.shuffle_groups(group_size)
+                if suggested_groups:
+                    st.session_state.suggested_groups = suggested_groups
+                    st.session_state.unassigned_count = unassigned_count
+                    st.success(f"Grupper er blevet foreslået. {unassigned_count} deltagere kunne ikke fordeles optimalt.")
+                else:
+                    st.error("Der opstod en fejl under forslag af grupper.")
+            else:
+                st.warning("Tilføj deltagere til bruttolisten før du foreslår grupper.")
+
     # Vis foreslåede grupper (hvis de findes)
     if 'suggested_groups' in st.session_state:
         st.subheader("Foreslåede grupper")
