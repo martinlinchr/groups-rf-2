@@ -15,7 +15,7 @@ class InteractiveGroupScheduler:
         self.meetings = []
         self.group_affiliations = set()
         self.last_meeting_serial = 0
-        self.group_history = {}  # Holder styr på, hvem der tidligere har været i gruppe sammen
+        self.group_history = {}
         self.load_data()
 
     def load_data(self):
@@ -138,7 +138,7 @@ class InteractiveGroupScheduler:
                     # Increment the meetings counter for the participant
                     participant_data['meetings'] = participant_data.get('meetings', 0) + 1
         
-        meeting_name = f"Møde - {', '.join(sorted(all_affiliations))}"
+        meeting_name = f"Møde {self.last_meeting_serial} - {', '.join(sorted(all_affiliations))}"
         
         self.meetings.append({
             'serial': self.last_meeting_serial,
@@ -233,37 +233,58 @@ class InteractiveGroupScheduler:
                         })
 
     def shuffle_groups(self, group_size):
-        participants = self.participants.copy()
+        participants = [p['name'] for p in self.participants]
         random.shuffle(participants)
         
         groups = []
-        while len(participants) >= group_size:
-            group = []
-            for _ in range(group_size):
-                for participant in participants:
-                    if all(self.can_group_with(participant, member) for member in group):
-                        group.append(participant)
-                        participants.remove(participant)
-                        break
-                if len(group) == group_size:
-                    break
-            if len(group) == group_size:
-                groups.append(group)
-            else:
-                break
+        unassigned = []
+        group_affiliations = defaultdict(set)
 
-        # Handle remaining participants
         for participant in participants:
-            added = False
-            for group in groups:
-                if len(group) < group_size and all(self.can_group_with(participant, member) for member in group):
-                    group.append(participant)
-                    added = True
-                    break
-            if not added:
-                groups.append([participant])
+            participant_data = next((p for p in self.participants if p['name'] == participant), None)
+            if not participant_data:
+                continue
 
-        return groups
+            participant_affiliations = set(participant_data.get('groups', ['Ikke tildelt']))
+            
+            assigned = False
+            for i, group in enumerate(groups):
+                if len(group) < group_size and not participant_affiliations.intersection(group_affiliations[i]):
+                    group.append(participant)
+                    group_affiliations[i].update(participant_affiliations)
+                    assigned = True
+                    break
+            
+            if not assigned:
+                if len(groups) * group_size < len(participants):
+                    groups.append([participant])
+                    group_affiliations[len(groups) - 1] = participant_affiliations
+                else:
+                    unassigned.append(participant)
+
+        # Distribute unassigned participants
+        for participant in unassigned:
+            participant_data = next((p for p in self.participants if p['name'] == participant), None)
+            if not participant_data:
+                continue
+
+            participant_affiliations = set(participant_data.get('groups', ['Ikke tildelt']))
+            
+            min_conflicts = float('inf')
+            best_group = None
+            
+            for i, group in enumerate(groups):
+                if len(group) < group_size:
+                    conflicts = len(participant_affiliations.intersection(group_affiliations[i]))
+                    if conflicts < min_conflicts:
+                        min_conflicts = conflicts
+                        best_group = i
+            
+            if best_group is not None:
+                groups[best_group].append(participant)
+                group_affiliations[best_group].update(participant_affiliations)
+
+        return groups, len(unassigned)
 
     def can_group_with(self, participant1, participant2):
         groupings1 = participant1.get('groupings', {})
