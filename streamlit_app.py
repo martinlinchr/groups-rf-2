@@ -195,18 +195,10 @@ def main_page(scheduler):
     if scheduler.meetings:
         st.header("Senest oprettet møde")
         latest_meeting = scheduler.meetings[-1]
-        with st.expander(f"{latest_meeting.get('name', 'Ukendt møde')}", key="latest_meeting_expander_main"):
+        with st.expander(f"{latest_meeting.get('name', 'Ukendt navn')} ({latest_meeting.get('date', 'Ingen dato angivet')})"):
             st.write("Grupper:")
-            for i, group in enumerate(latest_meeting['groups']):
-                group_str = f"Gruppe {i+1}:"
-                for name in group:
-                    participant = next((p for p in scheduler.participants if p['name'] == name), None)
-                    if participant:
-                        affiliations = ', '.join(participant.get('groups', ['Ikke tildelt']))
-                        group_str += f" {name} ({affiliations}),"
-                    else:
-                        group_str += f" {name} (Ukendt),"
-                st.write(group_str.rstrip(','))
+            for i, group in enumerate(latest_meeting['groups'], 1):
+                st.write(f"Gruppe {i}: {', '.join(group)}")
             
             # Mulighed for at redigere eller slette det seneste møde
             if st.button(f"Rediger grupper for det seneste møde", key=f"edit_latest_{latest_meeting['serial']}"):
