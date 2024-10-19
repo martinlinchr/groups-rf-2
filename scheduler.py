@@ -128,17 +128,15 @@ class InteractiveGroupScheduler:
     def create_meeting(self, groups, date):
         self.last_meeting_serial += 1
         
-        all_affiliations = set()
         for group in groups:
             for participant in group:
                 participant_name = participant if isinstance(participant, str) else participant.get('name', 'Unavngivet')
                 participant_data = next((p for p in self.participants if p['name'] == participant_name), None)
                 if participant_data:
-                    all_affiliations.update(participant_data.get('groups', ['Ikke tildelt']))
                     # Increment the meetings counter for the participant
                     participant_data['meetings'] = participant_data.get('meetings', 0) + 1
         
-        meeting_name = f"Møde {self.last_meeting_serial} - {', '.join(sorted(all_affiliations))}"
+        meeting_name = f"Møde {self.last_meeting_serial} - {date}"
         
         self.meetings.append({
             'serial': self.last_meeting_serial,
