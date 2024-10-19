@@ -216,10 +216,10 @@ def main_page(scheduler):
     if scheduler.meetings:
         st.header("Senest oprettet møde")
         latest_meeting = scheduler.meetings[-1]
-        with st.expander(f"{latest_meeting.get('name', 'Ukendt navn')} ({latest_meeting.get('date', 'Ingen dato angivet')})", key="latest_meeting_expander"):
+        with st.expander(f"{latest_meeting.get('name', 'Ukendt navn')} ({latest_meeting.get('date', 'Ingen dato angivet')})"):
             st.write("Grupper:")
-            for i, group in enumerate(latest_meeting['groups']):
-                group_str = f"Gruppe {i+1}:"
+            for i, group in enumerate(latest_meeting['groups'], 1):
+                group_str = f"Gruppe {i}:"
                 for name in group:
                     participant = next((p for p in scheduler.participants if p['name'] == name), None)
                     if participant:
@@ -227,9 +227,10 @@ def main_page(scheduler):
                         group_str += f" {name} ({affiliations}),"
                     else:
                         group_str += f" {name} (Ukendt),"
-                st.write(group_str.rstrip(','))
+                group_str = group_str.rstrip(',')  # Fjern det sidste komma
+                st.write(group_str)
             
-            if st.button("Rediger grupper for det seneste møde", key="edit_latest_meeting_button"):
+            if st.button(f"Rediger grupper for det seneste møde", key=f"edit_latest_{latest_meeting.get('serial', 'unknown')}"):
                 st.session_state.editing_meeting = len(scheduler.meetings) - 1
                 st.session_state.manual_groups, st.session_state.unassigned = scheduler.manual_group_matching(
                     [p for group in latest_meeting['groups'] for p in group],
@@ -237,35 +238,12 @@ def main_page(scheduler):
                 )
                 st.rerun()
             
-            if st.button("Slet det seneste møde", key="delete_latest_meeting_button"):
+            if st.button(f"Slet det seneste møde", key=f"delete_latest_{latest_meeting.get('serial', 'unknown')}"):
                 if scheduler.delete_meeting(len(scheduler.meetings) - 1):
                     st.success("Det seneste møde er blevet slettet.")
                     st.rerun()
                 else:
                     st.error("Der opstod en fejl ved sletning af mødet.")
-
-        if len(scheduler.meetings) > 1:
-            st.header("Tidligere møder")
-            for meeting_index, meeting in enumerate(reversed(scheduler.meetings[:-1])):
-                with st.expander(f"{meeting.get('name', 'Ukendt navn')} ({meeting.get('date', 'Ingen dato angivet')}, {sum(len(group) for group in meeting['groups'])} deltagere)", key=f"previous_meeting_expander_{meeting_index}"):
-                    st.write("Grupper:")
-                    for j, group in enumerate(meeting['groups']):
-                        st.write(f"Gruppe {j+1}: {', '.join(group)}")
-                    
-                    if st.button(f"Rediger grupper", key=f"edit_meeting_button_{meeting_index}"):
-                        st.session_state.editing_meeting = scheduler.meetings.index(meeting)
-                        st.session_state.manual_groups, st.session_state.unassigned = scheduler.manual_group_matching(
-                            [p for group in meeting['groups'] for p in group],
-                            meeting['groups']
-                        )
-                        st.rerun()
-                    
-                    if st.button(f"Slet møde", key=f"delete_meeting_button_{meeting_index}"):
-                        if scheduler.delete_meeting(scheduler.meetings.index(meeting)):
-                            st.success(f"Mødet er blevet slettet.")
-                            st.rerun()
-                        else:
-                            st.error("Der opstod en fejl ved sletning af mødet.")
 
     # Redigeringssektion for møder
     if 'editing_meeting' in st.session_state:
@@ -275,21 +253,21 @@ def main_page(scheduler):
         for i, group in enumerate(st.session_state.manual_groups):
             cols[i].write(f"Gruppe {i+1}")
             for person in group:
-                if cols[i].button(f"Fjern {person}", key=f"remove_person_button_{i}_{person}"):
+                if cols[i].button(f"Fjern {person}", key=f"edit_remove_{i}_{person}"):
                     st.session_state.manual_groups[i].remove(person)
                     st.session_state.unassigned.append(person)
                     st.rerun()
         
         cols[-1].write("Ikke tildelt")
         for person in st.session_state.unassigned:
-            col = cols[-1].selectbox(f"Tildel {person}", ["Ikke tildelt"] + [f"Gruppe {i+1}" for i in range(len(st.session_state.manual_groups))], key=f"assign_person_select_{person}")
+            col = cols[-1].selectbox(f"Tildel {person}", ["Ikke tildelt"] + [f"Gruppe {i+1}" for i in range(len(st.session_state.manual_groups))])
             if col != "Ikke tildelt":
                 group_index = int(col.split()[-1]) - 1
                 st.session_state.manual_groups[group_index].append(person)
                 st.session_state.unassigned.remove(person)
                 st.rerun()
         
-        if st.button("Gem ændringer", key="save_changes_button"):
+        if st.button("Gem ændringer"):
             scheduler.update_meeting_groups(st.session_state.editing_meeting, st.session_state.manual_groups)
             del st.session_state.editing_meeting
             del st.session_state.manual_groups
