@@ -85,9 +85,13 @@ class InteractiveGroupScheduler:
         self.meetings.clear()
         self.save_data()
 
-    def create_meeting(self, groups, date, meeting_number):
+    def create_meeting(self, groups, date, meeting_number=None):
         self.last_meeting_serial += 1
         formatted_date = datetime.strptime(date, "%Y-%m-%d").strftime("%d. %B %Y")
+        
+        if meeting_number is None:
+            meeting_number = self.last_meeting_serial
+        
         meeting_name = f"Møde {meeting_number} - {formatted_date}"
         
         self.meetings.append({
