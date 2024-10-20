@@ -138,7 +138,7 @@ def add_new_participant(scheduler):
         industry = st.text_input("Branche", key="new_participant_industry")
         group = st.selectbox("Gruppetilhør", options=[""] + list(scheduler.group_affiliations), key="new_participant_group")
         
-        # if st.button("Tilføj deltager", key="add_participant"):
+        if st.button("Tilføj deltager", key="add_participant"):
             if full_name:
                 participant_data = {
                     "name": full_name,
@@ -160,7 +160,7 @@ def add_new_participant(scheduler):
 def create_group_affiliation(scheduler):
     with st.sidebar.expander("Opret nyt gruppetilhør"):
         new_group = st.text_input("Nyt gruppetilhør navn", key="new_group_input")
-        # if st.button("Opret gruppetilhør", key="create_group"):
+        if st.button("Opret gruppetilhør", key="create_group"):
             if new_group and new_group not in scheduler.group_affiliations:
                 scheduler.add_group_affiliation(new_group)
                 st.success(f"Gruppetilhør '{new_group}' er oprettet.")
