@@ -27,6 +27,7 @@ class InteractiveGroupScheduler:
                 self.group_affiliations = set(data.get("group_affiliations", []))
                 self.last_meeting_serial = data.get("last_meeting_serial", 0)
                 self.group_history = data.get("group_history", {})
+                self.ensure_meeting_numbers()  # Kald denne metode efter indlæsning af data
         else:
             self.save_data()
 
@@ -106,6 +107,16 @@ class InteractiveGroupScheduler:
         for i, meeting in enumerate(self.meetings, 1):
             meeting['meeting_number'] = i
             meeting['name'] = f"Møde {i} - {meeting['formatted_date']}"
+        self.save_data()
+
+    def ensure_meeting_numbers(self):
+        for i, meeting in enumerate(self.meetings, 1):
+            if 'meeting_number' not in meeting:
+                meeting['meeting_number'] = i
+            if 'formatted_date' not in meeting:
+                formatted_date = datetime.strptime(meeting['date'], "%Y-%m-%d").strftime("%d. %B %Y")
+                meeting['formatted_date'] = formatted_date
+            meeting['name'] = f"Møde {meeting['meeting_number']} - {meeting['formatted_date']}"
         self.save_data()
 
     def update_groupings(self, groups):
