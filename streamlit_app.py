@@ -152,7 +152,10 @@ def main_page(scheduler):
             st.write("Ingen deltagere valgt endnu.")
 
     # Knap til at foreslå grupper
-    st.markdown('<h3 style="color:red;">STEP 5</h3>', unsafe_allow_html=True)
+    st.markdown('<h3 style="color:red;">STEP 3</h3>', unsafe_allow_html=True)
+    meeting_date = st.date_input("Vælg mødedato", value=datetime.now())
+    
+    st.markdown('<h3 style="color:red;">STEP 4</h3>', unsafe_allow_html=True)
     st.subheader("Foreslå grupper")
     
     col1, col2 = st.columns(2)
@@ -162,27 +165,20 @@ def main_page(scheduler):
         number_of_meetings = st.number_input("Antal møder at oprette", min_value=1, max_value=10, value=1, step=1, key="number_of_meetings_input")
     
     if st.button("Foreslå grupper", key="suggest_groups_button_main"):
-        if 'bruttoliste' in st.session_state and st.session_state.bruttoliste:
-            all_suggested_groups = []
-            total_unassigned = 0
-            for _ in range(number_of_meetings):
-                suggested_groups, unassigned_count = scheduler.shuffle_groups(group_size)
-                if suggested_groups:
-                    all_suggested_groups.append(suggested_groups)
-                    total_unassigned += unassigned_count
-                else:
-                    st.error(f"Der opstod en fejl under forslag af grupper for møde {len(all_suggested_groups) + 1}")
-                    break
-            
-            if all_suggested_groups:
-                st.session_state.all_suggested_groups = all_suggested_groups
-                st.session_state.total_unassigned = total_unassigned
-                st.success(f"Grupper er blevet foreslået for {len(all_suggested_groups)} møde(r). "
-                           f"I alt {total_unassigned} deltagere kunne ikke fordeles optimalt.")
+        all_suggested_groups = []
+        for _ in range(number_of_meetings):
+            suggested_groups, _ = scheduler.shuffle_groups(group_size)
+            if suggested_groups:
+                all_suggested_groups.append(suggested_groups)
             else:
-                st.error("Der opstod en fejl under forslag af grupper.")
+                st.error(f"Der opstod en fejl under forslag af grupper for møde {len(all_suggested_groups) + 1}")
+                break
+        
+        if all_suggested_groups:
+            st.session_state.all_suggested_groups = all_suggested_groups
+            st.success("Grupper er blevet foreslået. Se nedenfor for detaljer.")
         else:
-            st.warning("Tilføj deltagere til bruttolisten før du foreslår grupper.")
+            st.error("Der opstod en fejl under forslag af grupper.")
 
     # Vis foreslåede grupper (hvis de findes)
     if 'all_suggested_groups' in st.session_state:
@@ -201,16 +197,12 @@ def main_page(scheduler):
                 st.write(group_str.rstrip(','))
             st.write("---")
 
-        st.markdown('<h3 style="color:red;">STEP 6</h3>', unsafe_allow_html=True)
+        st.markdown('<h3 style="color:red;">STEP 5</h3>', unsafe_allow_html=True)
         if st.button("Opret møder med disse grupper", key="create_meetings_button_main"):
-            created_meetings = []
-            for i, suggested_groups in enumerate(st.session_state.all_suggested_groups, 1):
-                meeting_name = scheduler.create_meeting(suggested_groups, str(meeting_date), i)
-                created_meetings.append(meeting_name)
+            for suggested_groups in st.session_state.all_suggested_groups:
+                meeting_name = scheduler.create_meeting(suggested_groups, str(meeting_date))
                 st.success(f"Møde '{meeting_name}' oprettet for {meeting_date} med de foreslåede grupper.")
             scheduler.save_data()
-            scheduler.reset_meeting_numbers()  # Nulstil mødenumre efter oprettelse af nye møder
-            st.session_state.created_meetings = created_meetings
             del st.session_state.all_suggested_groups
             st.rerun()
 
@@ -219,7 +211,6 @@ def main_page(scheduler):
         st.header("Oprettede møder")
         for meeting in reversed(scheduler.meetings):
             with st.expander(f"{meeting.get('name', 'Ukendt navn')}"):
-                # Flyt knapper til toppen
                 col1, col2, col3 = st.columns(3)
                 
                 with col1:
@@ -251,7 +242,6 @@ def main_page(scheduler):
                         else:
                             st.error("Der opstod en fejl ved sletning af mødet.")
                 
-                # Vis grupperne
                 st.write("Grupper:")
                 for j, group in enumerate(meeting['groups']):
                     group_str = f"Gruppe {j+1}:"
@@ -272,21 +262,21 @@ def main_page(scheduler):
         for i, group in enumerate(st.session_state.manual_groups):
             cols[i].write(f"Gruppe {i+1}")
             for person in group:
-                if cols[i].button(f"Fjern {person}", key=f"edit_remove_{i}_{person}"):
+                if cols[i].button(f"Fjern {person}", key=f"remove_person_button_{i}_{person}"):
                     st.session_state.manual_groups[i].remove(person)
                     st.session_state.unassigned.append(person)
                     st.rerun()
         
         cols[-1].write("Ikke tildelt")
         for person in st.session_state.unassigned:
-            col = cols[-1].selectbox(f"Tildel {person}", ["Ikke tildelt"] + [f"Gruppe {i+1}" for i in range(len(st.session_state.manual_groups))])
+            col = cols[-1].selectbox(f"Tildel {person}", ["Ikke tildelt"] + [f"Gruppe {i+1}" for i in range(len(st.session_state.manual_groups))], key=f"assign_person_select_{person}")
             if col != "Ikke tildelt":
                 group_index = int(col.split()[-1]) - 1
                 st.session_state.manual_groups[group_index].append(person)
                 st.session_state.unassigned.remove(person)
                 st.rerun()
         
-        if st.button("Gem ændringer"):
+        if st.button("Gem ændringer", key="save_changes_button"):
             scheduler.update_meeting_groups(st.session_state.editing_meeting, st.session_state.manual_groups)
             del st.session_state.editing_meeting
             del st.session_state.manual_groups
