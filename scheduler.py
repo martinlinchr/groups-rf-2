@@ -284,7 +284,7 @@ class InteractiveGroupScheduler:
             groups[best_group].append(participant)
             group_affiliations[best_group].update(participant_affiliations)
 
-        return groups, len(unassigned)
+            return groups, len(unassigned)
 
     def can_group_with(self, participant1, participant2):
         groupings1 = participant1.get('groupings', {})
