@@ -231,62 +231,60 @@ class InteractiveGroupScheduler:
                         })
 
     def shuffle_groups(self, group_size):
-        participants = [p['name'] for p in self.participants]
-        random.shuffle(participants)
+    participants = [p['name'] for p in self.participants]
+    random.shuffle(participants)
+    
+    groups = []
+    unassigned = []
+    group_affiliations = defaultdict(set)
+
+    for participant in participants:
+        participant_data = next((p for p in self.participants if p['name'] == participant), None)
+        if not participant_data:
+            continue
+
+        participant_affiliations = set(participant_data.get('groups', ['Ikke tildelt']))
         
-        groups = []
-        unassigned = []
-        group_affiliations = defaultdict(set)
+        # Find den bedste gruppe at placere deltageren i
+        best_group = None
+        min_conflicts = float('inf')
+        for i, group in enumerate(groups):
+            if len(group) < group_size:
+                conflicts = len(participant_affiliations.intersection(group_affiliations[i]))
+                if conflicts < min_conflicts or (conflicts == min_conflicts and len(group) < len(groups[best_group]) if best_group is not None else True):
+                    min_conflicts = conflicts
+                    best_group = i
 
-        for participant in participants:
-            participant_data = next((p for p in self.participants if p['name'] == participant), None)
-            if not participant_data:
-                continue
+        if best_group is not None:
+            groups[best_group].append(participant)
+            group_affiliations[best_group].update(participant_affiliations)
+        elif len(groups) * group_size < len(participants):
+            groups.append([participant])
+            group_affiliations[len(groups) - 1] = participant_affiliations
+        else:
+            unassigned.append(participant)
 
-            participant_affiliations = set(participant_data.get('groups', ['Ikke tildelt']))
-            
-            assigned = False
-            for i, group in enumerate(groups):
-                if len(group) < group_size and not participant_affiliations.intersection(group_affiliations[i]):
-                    group.append(participant)
-                    group_affiliations[i].update(participant_affiliations)
-                    assigned = True
-                    break
-            
-            if not assigned:
-                if len(groups) * group_size < len(participants):
-                    groups.append([participant])
-                    group_affiliations[len(groups) - 1] = participant_affiliations
-                else:
-                    unassigned.append(participant)
+    # Fordel uassignede deltagere
+    for participant in unassigned:
+        participant_data = next((p for p in self.participants if p['name'] == participant), None)
+        if not participant_data:
+            continue
 
-        # Distribute unassigned participants
-        for participant in unassigned:
-            participant_data = next((p for p in self.participants if p['name'] == participant), None)
-            if not participant_data:
-                continue
+        participant_affiliations = set(participant_data.get('groups', ['Ikke tildelt']))
+        
+        best_group = None
+        min_conflicts = float('inf')
+        for i, group in enumerate(groups):
+            conflicts = len(participant_affiliations.intersection(group_affiliations[i]))
+            if conflicts < min_conflicts or (conflicts == min_conflicts and len(group) < len(groups[best_group]) if best_group is not None else True):
+                min_conflicts = conflicts
+                best_group = i
+        
+        if best_group is not None:
+            groups[best_group].append(participant)
+            group_affiliations[best_group].update(participant_affiliations)
 
-            participant_affiliations = set(participant_data.get('groups', ['Ikke tildelt']))
-            
-            min_conflicts = float('inf')
-            best_group = None
-            
-            for i, group in enumerate(groups):
-                if len(group) < group_size:
-                    conflicts = len(participant_affiliations.intersection(group_affiliations[i]))
-                    if conflicts < min_conflicts or (conflicts == min_conflicts and len(group) < len(groups[best_group]) if best_group is not None else True):
-                        min_conflicts = conflicts
-                        best_group = i
-            
-            if best_group is not None:
-                groups[best_group].append(participant)
-                group_affiliations[best_group].update(participant_affiliations)
-            else:
-                # If we couldn't find a suitable group, create a new one
-                groups.append([participant])
-                group_affiliations[len(groups) - 1] = participant_affiliations
-
-        return groups, len(unassigned)
+    return groups, len(unassigned)
 
     def can_group_with(self, participant1, participant2):
         groupings1 = participant1.get('groupings', {})
