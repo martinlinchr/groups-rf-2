@@ -78,6 +78,7 @@ def remove_all_members(scheduler):
                 st.rerun()
 
 def display_current_members(scheduler):
+    st.sidebar.markdown("---")  # Horizontal line
     st.sidebar.subheader("Medlemsliste")
     
     members = []
