@@ -54,25 +54,31 @@ def main_page(scheduler):
     st.header("Opret nyt møde")
 
     st.markdown('<h3 style="color:red;">STEP 1</h3>', unsafe_allow_html=True)
-
-    # Initialisér en tilstandsvariabel for at holde styr på, om medlemmer er blevet fjernet
+    
+    # Initialisér tilstandsvariabler
     if 'members_removed' not in st.session_state:
         st.session_state.members_removed = False
+    if 'reset_uploader' not in st.session_state:
+        st.session_state.reset_uploader = False
 
-    # File uploader med en unik nøgle
-    uploaded_file = st.file_uploader("Upload Excel eller CSV fil", type=['csv', 'xlsx', 'xls'], key="file_uploader_main")
+    # File uploader
+    if st.session_state.reset_uploader:
+        st.session_state.reset_uploader = False
+        uploaded_file = None
+    else:
+        uploaded_file = st.file_uploader("Upload Excel eller CSV fil", type=['csv', 'xlsx', 'xls'], key="file_uploader_main")
     
     if st.button("Fjern alle medlemmer", key="remove_all_members_button"):
         scheduler.remove_all_participants()
         st.session_state.pop('all_suggested_groups', None)
         st.session_state.members_removed = True
-        st.session_state.file_uploader_main = None  # Dette vil nulstille file uploaderen
+        st.session_state.reset_uploader = True
         st.rerun()
 
     # Vis notifikation, hvis medlemmer er blevet fjernet
     if st.session_state.members_removed:
         st.success("Alle medlemmer er blevet fjernet. Du kan nu uploade en ny fil.")
-        st.session_state.members_removed = False  # Nulstil tilstanden, så beskeden ikke vises igen ved næste genindlæsning
+        st.session_state.members_removed = False
 
     if uploaded_file is not None:
         st.markdown('<h3 style="color:red;">STEP 2</h3>', unsafe_allow_html=True)
