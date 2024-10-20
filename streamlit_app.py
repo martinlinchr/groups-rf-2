@@ -200,9 +200,6 @@ def main_page(scheduler):
                         group_str += f" {name} (Ukendt),"
                 st.write(group_str.rstrip(','))
             st.write("---")
-        
-        if st.session_state.get('total_unassigned', 0) > 0:
-            st.write(f"Antal deltagere, der ikke kunne fordeles optimalt i alt: {st.session_state.total_unassigned}")
 
         st.markdown('<h3 style="color:red;">STEP 6</h3>', unsafe_allow_html=True)
         if st.button("Opret møder med disse grupper", key="create_meetings_button_main"):
