@@ -126,19 +126,19 @@ class InteractiveGroupScheduler:
         return weights
 
     def create_meeting(self, groups, date):
-    self.last_meeting_serial += 1
-    meeting_name = f"Møde - {date}"  # Removed the meeting serial from the name
-    
-    self.meetings.append({
-        'serial': self.last_meeting_serial,  # Still keep serial for internal use
-        'name': meeting_name,
-        'date': date,
-        'groups': [[p if isinstance(p, str) else p.get('name', 'Unavngivet') for p in group] for group in groups]
-    })
-    self.update_groupings(groups)
-    self.save_data()
-    
-    return meeting_name
+        self.last_meeting_serial += 1
+        meeting_name = f"Møde - {date}"  # Removed the meeting serial from the name
+        
+        self.meetings.append({
+            'serial': self.last_meeting_serial,  # Still keep serial for internal use
+            'name': meeting_name,
+            'date': date,
+            'groups': [[p if isinstance(p, str) else p.get('name', 'Unavngivet') for p in group] for group in groups]
+        })
+        self.update_groupings(groups)
+        self.save_data()
+        
+        return meeting_name
 
     def update_groupings(self, groups):
         for group in groups:
@@ -223,7 +223,7 @@ class InteractiveGroupScheduler:
 
         return pd.DataFrame(meetings_data)
 
-        def shuffle_groups(self, group_size):
+    def shuffle_groups(self, group_size):
         participants = [p['name'] for p in self.participants]
         random.shuffle(participants)
 
@@ -290,19 +290,6 @@ class InteractiveGroupScheduler:
             self.update_groupings(group)
         self.save_data()
 
-    def update_groupings(self, groups):
-        for group in groups:
-            for participant in group:
-                participant_name = participant if isinstance(participant, str) else participant.get('name', 'Unavngivet')
-                participant_data = next((p for p in self.participants if p['name'] == participant_name), None)
-                if participant_data:
-                    if 'groupings' not in participant_data:
-                        participant_data['groupings'] = {}
-                    for other in group:
-                        other_name = other if isinstance(other, str) else other.get('name', 'Unavngivet')
-                        if participant_name != other_name:
-                            participant_data['groupings'][other_name] = participant_data['groupings'].get(other_name, 0) + 1
-
     def export_groups_to_csv(self, groups):
         output = io.StringIO()
         writer = csv.writer(output)
@@ -322,3 +309,78 @@ class InteractiveGroupScheduler:
                     ])
         
         return output.getvalue()
+
+# Importing InteractiveGroupScheduler class from scheduler
+from scheduler import InteractiveGroupScheduler
+
+# Initialize Streamlit to create an interactive app
+def main():
+    # Setting up the InteractiveGroupScheduler instance
+    scheduler = InteractiveGroupScheduler()
+
+    # Title for the Streamlit app
+    st.title("Interactive Group Scheduler")
+
+    # Menu for different functionalities in the app
+    menu = ["Add Participant", "Create Meeting", "View Participants", "Export Data"]
+    choice = st.sidebar.selectbox("Select Action", menu)
+
+    # Add Participant functionality
+    if choice == "Add Participant":
+        st.subheader("Add a new participant")
+        name = st.text_input("Participant Name")
+        email = st.text_input("Email")
+        company = st.text_input("Company")
+        groups = st.text_input("Groups (comma separated)").split(',')
+
+        if st.button("Add Participant"):
+            if name:
+                data = {
+                    'name': name,
+                    'email': email,
+                    'company': company,
+                    'groups': [group.strip() for group in groups if group.strip()]
+                }
+                scheduler.add_participant(name, data)
+                st.success(f"Participant {name} added successfully!")
+            else:
+                st.warning("Please enter a name for the participant.")
+
+    # Create Meeting functionality
+    elif choice == "Create Meeting":
+        st.subheader("Create a new meeting")
+        participants = [p['name'] for p in scheduler.participants]
+        selected_participants = st.multiselect("Select participants for the meeting", participants)
+        meeting_date = st.date_input("Select Meeting Date")
+
+        if st.button("Create Meeting"):
+            if len(selected_participants) >= 3:
+                groups = scheduler.suggest_groups(selected_participants)
+                meeting_name = scheduler.create_meeting(groups, str(meeting_date))
+                st.success(f"Meeting '{meeting_name}' created successfully!")
+            else:
+                st.warning("Please select at least 3 participants for a meeting.")
+
+    # View Participants functionality
+    elif choice == "View Participants":
+        st.subheader("List of Participants")
+        participants = scheduler.participants
+        if participants:
+            for participant in participants:
+                st.write(f"Name: {participant['name']}, Email: {participant.get('email', 'N/A')}, Company: {participant.get('company', 'N/A')}")
+        else:
+            st.info("No participants available.")
+
+    # Export Data functionality
+    elif choice == "Export Data":
+        st.subheader("Export Meetings to CSV")
+        meetings_df = scheduler.export_meetings_to_dataframe()
+        st.dataframe(meetings_df)
+
+        if st.button("Export to CSV"):
+            csv_data = meetings_df.to_csv(index=False).encode('utf-8')
+            st.download_button(label="Download CSV", data=csv_data, file_name='meetings.csv', mime='text/csv')
+
+if __name__ == "__main__":
+    import streamlit as st
+    main()
