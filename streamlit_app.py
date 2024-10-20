@@ -55,13 +55,21 @@ def main_page(scheduler):
 
     st.markdown('<h3 style="color:red;">STEP 1</h3>', unsafe_allow_html=True)
 
-    uploaded_file = st.file_uploader("Upload Excel eller CSV fil", type=['csv', 'xlsx', 'xls'])
+    if 'members_removed' not in st.session_state:
+        st.session_state.members_removed = False
+
+    uploaded_file = st.file_uploader("Upload Excel eller CSV fil", type=['csv', 'xlsx', 'xls'], key="file_uploader")
     
     if st.button("Fjern alle medlemmer", key="remove_all_members"):
         scheduler.remove_all_participants()
         st.session_state.pop('all_suggested_groups', None)
-        st.success("Alle medlemmer er blevet fjernet. Du kan nu uploade en ny fil.")
+        st.session_state.members_removed = True
+        st.session_state.file_uploader = None  # Dette vil nulstille file uploaderen
         st.rerun()
+
+    if st.session_state.members_removed:
+        st.success("Alle medlemmer er blevet fjernet. Du kan nu uploade en ny fil.")
+        st.session_state.members_removed = False  # Nulstil tilstanden, så beskeden ikke vises igen ved næste genindlæsning
 
     if uploaded_file is not None:
         st.markdown('<h3 style="color:red;">STEP 2</h3>', unsafe_allow_html=True)
@@ -72,7 +80,7 @@ def main_page(scheduler):
             else:
                 st.error(message)
 
-    # Datovælger for mødet (kun én gang)
+    # Datovælger for mødet
     st.markdown('<h3 style="color:red;">STEP 3</h3>', unsafe_allow_html=True)
     meeting_date = st.date_input("Vælg mødedato", value=datetime.now())
     
