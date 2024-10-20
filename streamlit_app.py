@@ -216,7 +216,7 @@ def main_page(scheduler):
     # Vis det seneste møde og tidligere møder
     if scheduler.meetings:
         st.header("Oprettede møder")
-        for i, meeting in enumerate(reversed(scheduler.meetings)):
+        for meeting in reversed(scheduler.meetings):
             with st.expander(f"{meeting.get('name', 'Ukendt navn')} ({meeting.get('date', 'Ingen dato angivet')})"):
                 st.write("Grupper:")
                 for j, group in enumerate(meeting['groups']):
@@ -236,10 +236,12 @@ def main_page(scheduler):
                     data=csv,
                     file_name=f"mode_{meeting['serial']}.csv",
                     mime="text/csv",
-                    key=f"download_meeting_{meeting['serial']}"
+                    key=f"download_meeting_{meeting['serial']}_{meeting['date']}"
                 )
                 
-                if st.button(f"Rediger grupper", key=f"edit_{meeting['serial']}"):
+                # Brug både serienummer og dato i nøglen for at sikre unikhed
+                edit_key = f"edit_{meeting['serial']}_{meeting['date']}"
+                if st.button(f"Rediger grupper", key=edit_key):
                     st.session_state.editing_meeting = scheduler.meetings.index(meeting)
                     st.session_state.manual_groups, st.session_state.unassigned = scheduler.manual_group_matching(
                         [p for group in meeting['groups'] for p in group],
@@ -247,7 +249,8 @@ def main_page(scheduler):
                     )
                     st.rerun()
                 
-                if st.button(f"Slet møde", key=f"delete_{meeting['serial']}"):
+                delete_key = f"delete_{meeting['serial']}_{meeting['date']}"
+                if st.button(f"Slet møde", key=delete_key):
                     if scheduler.delete_meeting(scheduler.meetings.index(meeting)):
                         st.success(f"Mødet er blevet slettet.")
                         st.rerun()
