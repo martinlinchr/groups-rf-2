@@ -231,12 +231,12 @@ class InteractiveGroupScheduler:
                         })
 
     def shuffle_groups(self, group_size):
-    participants = [p['name'] for p in self.participants]
-    random.shuffle(participants)
-    
-    groups = []
-    unassigned = []
-    group_affiliations = defaultdict(set)
+        participants = [p['name'] for p in self.participants]
+        random.shuffle(participants)
+        
+        groups = []
+        unassigned = []
+        group_affiliations = defaultdict(set)
 
     for participant in participants:
         participant_data = next((p for p in self.participants if p['name'] == participant), None)
