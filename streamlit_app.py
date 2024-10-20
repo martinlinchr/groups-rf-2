@@ -112,8 +112,8 @@ def main_page(scheduler):
 
         st.markdown('<h3 style="color:red;">STEP 5</h3>', unsafe_allow_html=True)
         if st.button("Opret møder med disse grupper", key="create_meetings_button_main"):
-            for suggested_groups in st.session_state.all_suggested_groups:
-                meeting_name = scheduler.create_meeting(suggested_groups, str(meeting_date))
+            for meeting_index, suggested_groups in enumerate(st.session_state.all_suggested_groups, 1):
+                meeting_name = scheduler.create_meeting(suggested_groups, str(meeting_date), meeting_index)
                 st.success(f"Møde '{meeting_name}' oprettet for {meeting_date} med de foreslåede grupper.")
             scheduler.save_data()
             del st.session_state.all_suggested_groups
