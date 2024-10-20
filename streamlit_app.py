@@ -214,11 +214,44 @@ def main_page(scheduler):
             del st.session_state.all_suggested_groups
             st.rerun()
 
-    # Vis det seneste møde og tidligere møder
+    # Vis oprettede møder
     if scheduler.meetings:
         st.header("Oprettede møder")
         for meeting in reversed(scheduler.meetings):
             with st.expander(f"{meeting.get('name', 'Ukendt navn')}"):
+                # Flyt knapper til toppen
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    csv = scheduler.export_meeting_to_csv(meeting)
+                    formatted_date = datetime.strptime(meeting['date'], "%Y-%m-%d").strftime("%d-%m-%Y")
+                    st.download_button(
+                        label="Download CSV",
+                        data=csv,
+                        file_name=f"mode_{meeting.get('meeting_number', meeting['serial'])}_{formatted_date}.csv",
+                        mime="text/csv",
+                        key=f"download_meeting_{meeting['serial']}_{meeting['date']}"
+                    )
+                
+                with col2:
+                    if st.button(f"Rediger grupper", key=f"edit_{meeting['serial']}_{meeting['date']}"):
+                        st.session_state.editing_meeting = scheduler.meetings.index(meeting)
+                        st.session_state.manual_groups, st.session_state.unassigned = scheduler.manual_group_matching(
+                            [p for group in meeting['groups'] for p in group],
+                            meeting['groups']
+                        )
+                        st.rerun()
+                
+                with col3:
+                    if st.button(f"Slet møde", key=f"delete_{meeting['serial']}_{meeting['date']}"):
+                        if scheduler.delete_meeting(scheduler.meetings.index(meeting)):
+                            st.success(f"Mødet er blevet slettet.")
+                            scheduler.reset_meeting_numbers()
+                            st.rerun()
+                        else:
+                            st.error("Der opstod en fejl ved sletning af mødet.")
+                
+                # Vis grupperne
                 st.write("Grupper:")
                 for j, group in enumerate(meeting['groups']):
                     group_str = f"Gruppe {j+1}:"
@@ -230,33 +263,6 @@ def main_page(scheduler):
                         else:
                             group_str += f" {name} (Ukendt),"
                     st.write(group_str.rstrip(','))
-                
-                csv = scheduler.export_meeting_to_csv(meeting)
-                st.download_button(
-                    label="Download CSV",
-                    data=csv,
-                    file_name=f"mode_{meeting.get('meeting_number', meeting['serial'])}.csv",
-                    mime="text/csv",
-                    key=f"download_meeting_{meeting['serial']}_{meeting['date']}"
-                )
-                
-                edit_key = f"edit_{meeting['serial']}_{meeting['date']}"
-                if st.button(f"Rediger grupper", key=edit_key):
-                    st.session_state.editing_meeting = scheduler.meetings.index(meeting)
-                    st.session_state.manual_groups, st.session_state.unassigned = scheduler.manual_group_matching(
-                        [p for group in meeting['groups'] for p in group],
-                        meeting['groups']
-                    )
-                    st.rerun()
-                
-                delete_key = f"delete_{meeting['serial']}_{meeting['date']}"
-                if st.button(f"Slet møde", key=delete_key):
-                    if scheduler.delete_meeting(scheduler.meetings.index(meeting)):
-                        st.success(f"Mødet er blevet slettet.")
-                        scheduler.reset_meeting_numbers()  # Nulstil mødenumre efter sletning af et møde
-                        st.rerun()
-                    else:
-                        st.error("Der opstod en fejl ved sletning af mødet.")
 
     # Redigeringssektion for møder
     if 'editing_meeting' in st.session_state:
