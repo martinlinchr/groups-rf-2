@@ -27,15 +27,15 @@ def main():
     # Erstat dropdown med knapper
     if st.sidebar.button("Hovedside >"):
         st.session_state.page = "Hovedside"
-    if st.sidebar.button("Quick shuffle af mødegrupper >"):
-        st.session_state.page = "Shuffle Mødegrupper"
+    # if st.sidebar.button("Quick shuffle af mødegrupper >"):
+        # st.session_state.page = "Shuffle Mødegrupper"
     
     # Skjul statistik-knappen for nu (kan gøres synlig senere)
     # if st.sidebar.button("Statistik >"):
     #     st.session_state.page = "Statistik"
     
     # Tilføj horisontal linje under sidste knap
-    st.sidebar.markdown("---")
+    # st.sidebar.markdown("---")
 
     # Tilføj hovedtitel
     st.title("Gruppeinddeling")
