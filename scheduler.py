@@ -84,20 +84,29 @@ class InteractiveGroupScheduler:
         self.meetings.clear()
         self.save_data()
 
-    def create_meeting(self, groups, date):
+    def create_meeting(self, groups, date, meeting_number):
         self.last_meeting_serial += 1
-        meeting_name = f"Møde {self.last_meeting_serial} - {date}"
+        formatted_date = datetime.strptime(date, "%Y-%m-%d").strftime("%d. %B %Y")
+        meeting_name = f"Møde {meeting_number} - {formatted_date}"
         
         self.meetings.append({
             'serial': self.last_meeting_serial,
             'name': meeting_name,
             'date': date,
+            'formatted_date': formatted_date,
+            'meeting_number': meeting_number,
             'groups': [[p if isinstance(p, str) else p.get('name', 'Unavngivet') for p in group] for group in groups]
         })
         self.update_groupings(groups)
         self.save_data()
         
         return meeting_name
+
+    def reset_meeting_numbers(self):
+        for i, meeting in enumerate(self.meetings, 1):
+            meeting['meeting_number'] = i
+            meeting['name'] = f"Møde {i} - {meeting['formatted_date']}"
+        self.save_data()
 
     def update_groupings(self, groups):
         for group in groups:
