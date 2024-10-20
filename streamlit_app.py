@@ -58,21 +58,17 @@ def main_page(scheduler):
     # Initialisér tilstandsvariabler
     if 'members_removed' not in st.session_state:
         st.session_state.members_removed = False
-    if 'reset_uploader' not in st.session_state:
-        st.session_state.reset_uploader = False
+    if 'uploader_key' not in st.session_state:
+        st.session_state.uploader_key = 0
 
-    # File uploader
-    if st.session_state.reset_uploader:
-        st.session_state.reset_uploader = False
-        uploaded_file = None
-    else:
-        uploaded_file = st.file_uploader("Upload Excel eller CSV fil", type=['csv', 'xlsx', 'xls'], key="file_uploader_main")
+    # File uploader med dynamisk nøgle
+    uploaded_file = st.file_uploader("Upload Excel eller CSV fil", type=['csv', 'xlsx', 'xls'], key=f"file_uploader_main_{st.session_state.uploader_key}")
     
     if st.button("Fjern alle medlemmer", key="remove_all_members_button"):
         scheduler.remove_all_participants()
         st.session_state.pop('all_suggested_groups', None)
         st.session_state.members_removed = True
-        st.session_state.reset_uploader = True
+        st.session_state.uploader_key += 1  # Ændrer nøglen for at nulstille uploaderen
         st.rerun()
 
     # Vis notifikation, hvis medlemmer er blevet fjernet
