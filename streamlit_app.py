@@ -204,11 +204,12 @@ def main_page(scheduler):
         st.markdown('<h3 style="color:red;">STEP 6</h3>', unsafe_allow_html=True)
         if st.button("Opret møder med disse grupper", key="create_meetings_button_main"):
             created_meetings = []
-            for i, suggested_groups in enumerate(st.session_state.all_suggested_groups):
-                meeting_name = scheduler.create_meeting(suggested_groups, str(meeting_date))
+            for i, suggested_groups in enumerate(st.session_state.all_suggested_groups, 1):
+                meeting_name = scheduler.create_meeting(suggested_groups, str(meeting_date), i)
                 created_meetings.append(meeting_name)
                 st.success(f"Møde '{meeting_name}' oprettet for {meeting_date} med de foreslåede grupper.")
             scheduler.save_data()
+            scheduler.reset_meeting_numbers()  # Nulstil mødenumre efter oprettelse af nye møder
             st.session_state.created_meetings = created_meetings
             del st.session_state.all_suggested_groups
             st.rerun()
@@ -217,7 +218,7 @@ def main_page(scheduler):
     if scheduler.meetings:
         st.header("Oprettede møder")
         for meeting in reversed(scheduler.meetings):
-            with st.expander(f"{meeting.get('name', 'Ukendt navn')} ({meeting.get('date', 'Ingen dato angivet')})"):
+            with st.expander(f"{meeting.get('name', 'Ukendt navn')}"):
                 st.write("Grupper:")
                 for j, group in enumerate(meeting['groups']):
                     group_str = f"Gruppe {j+1}:"
@@ -234,12 +235,11 @@ def main_page(scheduler):
                 st.download_button(
                     label="Download CSV",
                     data=csv,
-                    file_name=f"mode_{meeting['serial']}.csv",
+                    file_name=f"mode_{meeting['meeting_number']}.csv",
                     mime="text/csv",
                     key=f"download_meeting_{meeting['serial']}_{meeting['date']}"
                 )
                 
-                # Brug både serienummer og dato i nøglen for at sikre unikhed
                 edit_key = f"edit_{meeting['serial']}_{meeting['date']}"
                 if st.button(f"Rediger grupper", key=edit_key):
                     st.session_state.editing_meeting = scheduler.meetings.index(meeting)
@@ -253,6 +253,7 @@ def main_page(scheduler):
                 if st.button(f"Slet møde", key=delete_key):
                     if scheduler.delete_meeting(scheduler.meetings.index(meeting)):
                         st.success(f"Mødet er blevet slettet.")
+                        scheduler.reset_meeting_numbers()  # Nulstil mødenumre efter sletning af et møde
                         st.rerun()
                     else:
                         st.error("Der opstod en fejl ved sletning af mødet.")
