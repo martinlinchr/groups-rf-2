@@ -153,42 +153,65 @@ def main_page(scheduler):
 
     # Knap til at foreslå grupper
     st.markdown('<h3 style="color:red;">STEP 5</h3>', unsafe_allow_html=True)
-    if st.button("Foreslå grupper"):
-        if st.session_state.bruttoliste:
-            suggested_groups = scheduler.suggest_groups(st.session_state.bruttoliste)
-            if suggested_groups:
-                st.session_state.suggested_groups = suggested_groups
-                st.success("Grupper er foreslået. Du kan justere dem manuelt når mødegrupperne er oprettet.")
+    st.subheader("Foreslå grupper")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        group_size = st.selectbox("Vælg antal personer per gruppe", [3, 4, 5, 6], index=1, key="group_size_select_main")
+    with col2:
+        number_of_meetings = st.number_input("Antal møder at oprette", min_value=1, max_value=10, value=1, step=1, key="number_of_meetings_input")
+    
+    if st.button("Foreslå grupper", key="suggest_groups_button_main"):
+        if 'bruttoliste' in st.session_state and st.session_state.bruttoliste:
+            all_suggested_groups = []
+            total_unassigned = 0
+            for _ in range(number_of_meetings):
+                suggested_groups, unassigned_count = scheduler.shuffle_groups(group_size)
+                if suggested_groups:
+                    all_suggested_groups.append(suggested_groups)
+                    total_unassigned += unassigned_count
+                else:
+                    st.error(f"Der opstod en fejl under forslag af grupper for møde {len(all_suggested_groups) + 1}")
+                    break
+            
+            if all_suggested_groups:
+                st.session_state.all_suggested_groups = all_suggested_groups
+                st.session_state.total_unassigned = total_unassigned
+                st.success(f"Grupper er blevet foreslået for {len(all_suggested_groups)} møde(r). "
+                           f"I alt {total_unassigned} deltagere kunne ikke fordeles optimalt.")
             else:
-                st.error("For få deltagere til at foreslå grupper.")
+                st.error("Der opstod en fejl under forslag af grupper.")
         else:
             st.warning("Tilføj deltagere til bruttolisten før du foreslår grupper.")
 
     # Vis foreslåede grupper (hvis de findes)
-    if 'suggested_groups' in st.session_state:
+    if 'all_suggested_groups' in st.session_state:
         st.subheader("Foreslåede grupper")
-        for i, group in enumerate(st.session_state.suggested_groups, 1):
-            group_with_affiliations = []
-            for name in group:
-                participant = next((p for p in scheduler.participants if p['name'] == name), None)
-                if participant:
-                    affiliations = ', '.join(participant.get('groups', ['Ikke tildelt']))
-                    group_with_affiliations.append(f"{name} ({affiliations})")
-                else:
-                    group_with_affiliations.append(f"{name} (Ukendt)")
-            st.write(f"Gruppe {i}: {', '.join(group_with_affiliations)}")
+        for meeting_index, suggested_groups in enumerate(st.session_state.all_suggested_groups):
+            st.write(f"Møde {meeting_index + 1}:")
+            for i, group in enumerate(suggested_groups):
+                group_str = f"Gruppe {i+1}:"
+                for name in group:
+                    participant = next((p for p in scheduler.participants if p['name'] == name), None)
+                    if participant:
+                        affiliations = ', '.join(participant.get('groups', ['Ikke tildelt']))
+                        group_str += f" {name} ({affiliations}),"
+                    else:
+                        group_str += f" {name} (Ukendt),"
+                st.write(group_str.rstrip(','))
+            st.write("---")
+        
+        if st.session_state.get('total_unassigned', 0) > 0:
+            st.write(f"Antal deltagere, der ikke kunne fordeles optimalt i alt: {st.session_state.total_unassigned}")
 
-        st.markdown('<h3 style="color:red;">STEP 5</h3>', unsafe_allow_html=True)
-        if st.button("Opret møde med disse grupper"):
-            # Opret møde og gem i scheduler og session_state
-            meeting_name = scheduler.create_meeting(st.session_state.suggested_groups, str(meeting_date))
-            st.success(f"Møde '{meeting_name}' oprettet for {meeting_date} med de foreslåede grupper.")
-            
-            # Gem møder i session_state for at sikre, at de bevares efter genindlæsning
-            st.session_state.scheduler.save_data()
-            
-            # Behold bruttolisten og checkbox-tilstandene, men fjern kun 'suggested_groups'
-            del st.session_state.suggested_groups
+        st.markdown('<h3 style="color:red;">STEP 6</h3>', unsafe_allow_html=True)
+        if st.button("Opret møder med disse grupper", key="create_meetings_button_main"):
+            for suggested_groups in st.session_state.all_suggested_groups:
+                meeting_name = scheduler.create_meeting(suggested_groups, str(meeting_date))
+                st.success(f"Møde '{meeting_name}' oprettet for {meeting_date} med de foreslåede grupper.")
+            scheduler.save_data()
+            del st.session_state.all_suggested_groups
+            del st.session_state.total_unassigned
             st.rerun()
 
     # Vis det seneste møde og tidligere møder
