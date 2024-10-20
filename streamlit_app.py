@@ -22,11 +22,11 @@ def main():
         st.session_state.page = "Hovedside"
 
     # Tilføj navigation menu i sidebaren
-    st.sidebar.title("Navigation")
+    # st.sidebar.title("Navigation")
     
     # Erstat dropdown med knapper
-    if st.sidebar.button("Hovedside >"):
-        st.session_state.page = "Hovedside"
+    # if st.sidebar.button("Hovedside >"):
+        # st.session_state.page = "Hovedside"
     # if st.sidebar.button("Quick shuffle af mødegrupper >"):
         # st.session_state.page = "Shuffle Mødegrupper"
     
