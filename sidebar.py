@@ -130,6 +130,43 @@ def handle_import_export(scheduler):
         if st.sidebar.button("Importér deltagere", key="import_members"):
             import_participants(scheduler, uploaded_file)
 
+def add_new_participant(scheduler):
+    with st.sidebar.expander("Tilføj ny deltager", expanded=False):
+        full_name = st.text_input("Fulde navn", key="new_participant_name")
+        company = st.text_input("Virksomhed", key="new_participant_company")
+        position = st.text_input("Stilling", key="new_participant_position")
+        industry = st.text_input("Branche", key="new_participant_industry")
+        group = st.selectbox("Gruppetilhør", options=[""] + list(scheduler.group_affiliations), key="new_participant_group")
+        
+        if st.button("Tilføj deltager", key="add_participant"):
+            if full_name:
+                participant_data = {
+                    "name": full_name,
+                    "company": company,
+                    "position": position,
+                    "industry": industry,
+                    "groups": [group] if group else [],
+                    "meetings": 0,
+                    "groupings": {}
+                }
+                if scheduler.add_participant(full_name, participant_data):
+                    st.sidebar.success(f"Deltager '{full_name}' er tilføjet.")
+                    st.session_state.clear_inputs = True
+                else:
+                    st.sidebar.error(f"Kunne ikke tilføje deltager '{full_name}'. Måske eksisterer den allerede?")
+            else:
+                st.sidebar.error("Deltagerens navn skal udfyldes.")
+
+def create_group_affiliation(scheduler):
+    with st.sidebar.expander("Opret nyt gruppetilhør"):
+        new_group = st.text_input("Nyt gruppetilhør navn", key="new_group_input")
+        if st.button("Opret gruppetilhør", key="create_group"):
+            if new_group and new_group not in scheduler.group_affiliations:
+                scheduler.add_group_affiliation(new_group)
+                st.success(f"Gruppetilhør '{new_group}' er oprettet.")
+            else:
+                st.error("Gruppetilhør eksisterer allerede eller er tomt.")
+
 def export_participants(participants):
     # Implementation for exporting participants
     pass
