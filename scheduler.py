@@ -125,12 +125,12 @@ class InteractiveGroupScheduler:
                         weights[participant] += count / total_groupings if total_groupings else 0
         return weights
 
-    def create_meeting(self, groups, date):
+    ef create_meeting(self, groups, date):
         self.last_meeting_serial += 1
-        meeting_name = f"Møde - {date}"  # Removed the meeting serial from the name
+        meeting_name = f"Møde {self.last_meeting_serial} - {date}"
         
         self.meetings.append({
-            'serial': self.last_meeting_serial,  # Still keep serial for internal use
+            'serial': self.last_meeting_serial,
             'name': meeting_name,
             'date': date,
             'groups': [[p if isinstance(p, str) else p.get('name', 'Unavngivet') for p in group] for group in groups]
@@ -228,56 +228,46 @@ class InteractiveGroupScheduler:
         random.shuffle(participants)
 
         groups = []
-        unassigned = []
         group_affiliations = defaultdict(set)
 
-        for participant in participants:
-            participant_data = next((p for p in self.participants if p['name'] == participant), None)
-            if not participant_data:
-                continue
+        while participants:
+            group = []
+            for _ in range(group_size):
+                if not participants:
+                    break
+                
+                best_participant = None
+                min_conflicts = float('inf')
+                
+                for participant in participants:
+                    participant_data = next((p for p in self.participants if p['name'] == participant), None)
+                    if not participant_data:
+                        continue
 
-            participant_affiliations = set(participant_data.get('groups', ['Ikke tildelt']))
-
-            # Find the best group to place the participant
-            best_group = None
-            min_conflicts = float('inf')
-            for i, group in enumerate(groups):
-                if len(group) < group_size:
-                    conflicts = len(participant_affiliations.intersection(group_affiliations[i]))
-                    if conflicts < min_conflicts or (conflicts == min_conflicts and len(group) < len(groups[best_group]) if best_group is not None else True):
+                    participant_affiliations = set(participant_data.get('groups', ['Ikke tildelt']))
+                    conflicts = len(participant_affiliations.intersection(group_affiliations[len(groups)]))
+                    
+                    if conflicts < min_conflicts:
                         min_conflicts = conflicts
-                        best_group = i
+                        best_participant = participant
 
-            if best_group is not None:
-                groups[best_group].append(participant)
-                group_affiliations[best_group].update(participant_affiliations)
-            elif len(groups) * group_size < len(participants):
-                groups.append([participant])
-                group_affiliations[len(groups) - 1] = participant_affiliations
+                if best_participant:
+                    group.append(best_participant)
+                    participants.remove(best_participant)
+                    participant_data = next((p for p in self.participants if p['name'] == best_participant), None)
+                    group_affiliations[len(groups)].update(participant_data.get('groups', ['Ikke tildelt']))
+
+            if len(group) >= 3:
+                groups.append(group)
+            elif groups and len(groups[-1]) + len(group) <= group_size + 1:
+                groups[-1].extend(group)
             else:
-                unassigned.append(participant)
+                # Distribute remaining participants to existing groups
+                for participant in group:
+                    min_group = min(groups, key=len)
+                    min_group.append(participant)
 
-        # Assign unassigned participants
-        for participant in unassigned:
-            participant_data = next((p for p in self.participants if p['name'] == participant), None)
-            if not participant_data:
-                continue
-
-            participant_affiliations = set(participant_data.get('groups', ['Ikke tildelt']))
-
-            best_group = None
-            min_conflicts = float('inf')
-            for i, group in enumerate(groups):
-                conflicts = len(participant_affiliations.intersection(group_affiliations[i]))
-                if conflicts < min_conflicts or (conflicts == min_conflicts and (best_group is None or len(group) < len(groups[best_group]))):
-                    min_conflicts = conflicts
-                    best_group = i
-
-            if best_group is not None:
-                groups[best_group].append(participant)
-                group_affiliations[best_group].update(participant_affiliations)
-
-        return groups, len(unassigned)
+        return groups, 0  # Return 0 for unassigned as we've distributed all participants
 
     def can_group_with(self, participant1, participant2):
         groupings1 = participant1.get('groupings', {})
@@ -290,14 +280,13 @@ class InteractiveGroupScheduler:
             self.update_groupings(group)
         self.save_data()
 
-    def export_groups_to_csv(self, groups):
+    def export_meeting_to_csv(self, meeting):
         output = io.StringIO()
         writer = csv.writer(output)
         writer.writerow(['Gruppe', 'Navn', 'Email', 'Virksomhed', 'Tilhørsgruppe'])
         
-        for i, group in enumerate(groups, 1):
-            for participant in group:
-                participant_name = participant if isinstance(participant, str) else participant.get('name', 'Unavngivet')
+        for i, group in enumerate(meeting['groups'], 1):
+            for participant_name in group:
                 participant_data = next((p for p in self.participants if p['name'] == participant_name), None)
                 if participant_data:
                     writer.writerow([
