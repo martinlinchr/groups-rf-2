@@ -12,8 +12,6 @@ def sidebar(scheduler):
     
     if st.sidebar.button("Hovedside >", key="nav_hovedside"):
         st.session_state.page = "Hovedside"
-    
-    # Knappen "Quick shuffle af mødegrupper >" er nu fjernet
 
     # Skjuler deltagerhåndtering, hvis SHOW_SHEET_DATA er False
     if SHOW_SHEET_DATA:  
