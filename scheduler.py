@@ -276,13 +276,13 @@ class InteractiveGroupScheduler:
         min_conflicts = float('inf')
         for i, group in enumerate(groups):
             conflicts = len(participant_affiliations.intersection(group_affiliations[i]))
-            if conflicts < min_conflicts or (conflicts == min_conflicts and len(group) < len(groups[best_group]) if best_group is not None else True):
+            if conflicts < min_conflicts or (conflicts == min_conflicts and (best_group is None or len(group) < len(groups[best_group]))):
                 min_conflicts = conflicts
                 best_group = i
         
         if best_group is not None:
             groups[best_group].append(participant)
-            group_affiliations[best_group].update(participant_affiliations)
+            group_affiliations[best_group].update(participant_affiliations
 
     return groups, len(unassigned)
 
