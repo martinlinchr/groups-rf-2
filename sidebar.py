@@ -8,18 +8,21 @@ SHOW_SHEET_DATA = False  # Skjul "Deltagerhåndtering" og Google Sheets
 SHOW_REMOVE_MEMBERS = False  # Skjul "Fjern alle medlemmer"
 
 def sidebar(scheduler):
+    st.sidebar.title("Navigation")
+    
+    if st.sidebar.button("Hovedside >", key="nav_hovedside"):
+        st.session_state.page = "Hovedside"
+    
+    # Knappen "Quick shuffle af mødegrupper >" er nu fjernet
+
     # Skjuler deltagerhåndtering, hvis SHOW_SHEET_DATA er False
     if SHOW_SHEET_DATA:  
         st.sidebar.header("Deltagerhåndtering")
         display_sheet_data(scheduler)
 
-    st.sidebar.markdown("---")  # Horizontal line
-
     # Skjuler sektionen for at fjerne alle medlemmer, hvis SHOW_REMOVE_MEMBERS er False
     if SHOW_REMOVE_MEMBERS:  
         remove_all_members(scheduler)
-
-    st.sidebar.markdown("---")  # Horizontal line
 
     display_current_members(scheduler)
 
